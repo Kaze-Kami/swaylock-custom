@@ -24,54 +24,48 @@ enum input_state {
 	INPUT_STATE_NEUTRAL, // pressed a key (like Ctrl) that did nothing
 };
 
-struct swaylock_colorset {
-	uint32_t input;
-	uint32_t cleared;
-	uint32_t caps_lock;
-	uint32_t verifying;
-	uint32_t wrong;
-};
-
 struct swaylock_colors {
+	// background 
 	uint32_t background;
-	uint32_t bs_highlight;
-	uint32_t key_highlight;
-	uint32_t caps_lock_bs_highlight;
-	uint32_t caps_lock_key_highlight;
-	uint32_t separator;
-	uint32_t layout_background;
-	uint32_t layout_border;
-	uint32_t layout_text;
-	struct swaylock_colorset inside;
-	struct swaylock_colorset line;
-	struct swaylock_colorset ring;
-	struct swaylock_colorset text;
+
+	// text (clock) color
+	uint32_t text;
+
+	// key colors
+	uint32_t highlight_bs;
+	uint32_t highlight_key;
+
+	// state colors
+	uint32_t ring;
+	uint32_t highlight_clear;
+	uint32_t highlight_ver;
+	uint32_t highlight_wrong;
 };
 
 struct swaylock_args {
-	struct swaylock_colors colors;
-	enum background_mode mode;
-	char *font;
-	uint32_t font_size;
-	uint32_t radius;
-	uint32_t thickness;
-	uint32_t indicator_x_position;
-	uint32_t indicator_y_position;
-	bool override_indicator_x_position;
-	bool override_indicator_y_position;
+	// input & indicator
 	bool ignore_empty;
 	bool show_indicator;
-	bool show_caps_lock_text;
-	bool show_caps_lock_indicator;
-	bool show_keyboard_layout;
-	bool hide_keyboard_layout;
-	bool show_failed_attempts;
-	bool daemonize;
-	int ready_fd;
 	bool indicator_idle_visible;
+	uint32_t radius;
+	uint32_t thickness;
+	int32_t indicator_x_position;
+	int32_t indicator_y_position;
+	
+	// background image mode	
+	enum background_mode mode;
+
+	// font
+	char *font;
+	uint32_t font_size;
+	
+	// clock
 	bool clock;
 	char *timestr;
 	char *datestr;
+	
+	// colors
+	struct swaylock_colors colors;
 };
 
 struct swaylock_password {

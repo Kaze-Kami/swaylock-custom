@@ -20,27 +20,6 @@ static uint32_t get_font_size(struct swaylock_state *state, int arc_radius) {
 	}
 }
 
-static void set_color_for_state(cairo_t *cairo, struct swaylock_state *state, struct swaylock_colorset *colorset) {
-	if (state->input_state == INPUT_STATE_CLEAR) {
-		cairo_set_source_u32(cairo, colorset->cleared);
-	} else if (state->auth_state == AUTH_STATE_VALIDATING) {
-		cairo_set_source_u32(cairo, colorset->verifying);
-	} else if (state->auth_state == AUTH_STATE_INVALID) {
-		cairo_set_source_u32(cairo, colorset->wrong);
-	} else {
-		if (state->xkb.caps_lock && state->args.show_caps_lock_indicator) {
-			cairo_set_source_u32(cairo, colorset->caps_lock);
-		} else if (state->xkb.caps_lock && !state->args.show_caps_lock_indicator && state->args.show_caps_lock_text) {
-			uint32_t inputtextcolor = state->args.colors.text.input;
-			state->args.colors.text.input = state->args.colors.text.caps_lock;
-			cairo_set_source_u32(cairo, colorset->input);
-			state->args.colors.text.input = inputtextcolor;
-		} else {
-			cairo_set_source_u32(cairo, colorset->input);
-		}
-	}
-}
-
 void render_frame_background(struct swaylock_surface *surface) {
 	struct swaylock_state *state = surface->state;
 
@@ -165,7 +144,7 @@ void render_frame(struct swaylock_surface *surface) {
 	int subsurf_ypos;
 
 	// Center the indicator unless overridden by the user
-	if (state->args.override_indicator_x_position) {
+	if (state->args.indicator_x_position >= 0) {
 		subsurf_xpos = state->args.indicator_x_position -
 			buffer_width / (2 * surface->scale) + 2 / surface->scale;
 	} else {
@@ -173,7 +152,7 @@ void render_frame(struct swaylock_surface *surface) {
 			buffer_width / (2 * surface->scale) + 2 / surface->scale;
 	}
 
-	if (state->args.override_indicator_y_position) {
+	if (state->args.indicator_y_position >= 0) {
 		subsurf_ypos = state->args.indicator_y_position -
 			(state->args.radius + state->args.thickness);
 	} else {
@@ -200,20 +179,16 @@ void render_frame(struct swaylock_surface *surface) {
 	cairo_paint(cairo);
 	cairo_restore(cairo);
 	
-	float type_indicator_border_thickness =
-		TYPE_INDICATOR_BORDER_THICKNESS * surface->scale;
-
 	if (draw_indicator) {
 		// Draw ring
 		cairo_set_line_width(cairo, arc_thickness);
-		cairo_arc(cairo, buffer_width / 2, buffer_diameter / 2, arc_radius,
-				0, 2 * M_PI);
-		set_color_for_state(cairo, state, &state->args.colors.ring);
+		cairo_arc(cairo, buffer_width / 2, buffer_diameter / 2, arc_radius, 0, 2 * M_PI);
+		cairo_set_source_u32(cairo, state->args.colors.ring);
 		cairo_stroke(cairo);
 
 		// Draw message
 		configure_font_drawing(cairo, state, surface->subpixel, arc_radius);
-		set_color_for_state(cairo, state, &state->args.colors.text);
+		cairo_set_source_u32(cairo, state->args.colors.text);
 		
 		cairo_text_extents_t extents_l1, extents_l2;
 		cairo_font_extents_t fe_l1, fe_l2;
@@ -253,43 +228,28 @@ void render_frame(struct swaylock_surface *surface) {
 		}
 
 		// Typing indicator: Highlight random part on keypress
-		if (state->input_state == INPUT_STATE_LETTER ||
-				state->input_state == INPUT_STATE_BACKSPACE) {
+		if (state->input_state == INPUT_STATE_LETTER || state->input_state == INPUT_STATE_BACKSPACE) {
 			double highlight_start = state->highlight_start * (M_PI / 1024.0);
-			cairo_arc(cairo, buffer_width / 2, buffer_diameter / 2,
-					arc_radius, highlight_start,
-					highlight_start + TYPE_INDICATOR_RANGE);
+			cairo_arc(cairo, buffer_width / 2, buffer_diameter / 2, arc_radius, highlight_start, highlight_start + TYPE_INDICATOR_RANGE);
 			if (state->input_state == INPUT_STATE_LETTER) {
-				if (state->xkb.caps_lock && state->args.show_caps_lock_indicator) {
-					cairo_set_source_u32(cairo, state->args.colors.caps_lock_key_highlight);
-				} else {
-					cairo_set_source_u32(cairo, state->args.colors.key_highlight);
-				}
+				cairo_set_source_u32(cairo, state->args.colors.highlight_key);
 			} else {
-				if (state->xkb.caps_lock && state->args.show_caps_lock_indicator) {
-					cairo_set_source_u32(cairo, state->args.colors.caps_lock_bs_highlight);
-				} else {
-					cairo_set_source_u32(cairo, state->args.colors.bs_highlight);
-				}
+				cairo_set_source_u32(cairo, state->args.colors.highlight_bs);
 			}
-			cairo_stroke(cairo);
-
-			// Draw borders
-			cairo_set_source_u32(cairo, state->args.colors.separator);
-			cairo_arc(cairo, buffer_width / 2, buffer_diameter / 2,
-					arc_radius, highlight_start,
-					highlight_start + type_indicator_border_thickness);
-			cairo_stroke(cairo);
-
-			cairo_arc(cairo, buffer_width / 2, buffer_diameter / 2,
-					arc_radius, highlight_start + TYPE_INDICATOR_RANGE,
-					highlight_start + TYPE_INDICATOR_RANGE +
-						type_indicator_border_thickness);
 			cairo_stroke(cairo);
 		}
 
 		// Draw inner + outer border of the circle
-		set_color_for_state(cairo, state, &state->args.colors.line);
+		if (state->input_state == INPUT_STATE_CLEAR) {
+			cairo_set_source_u32(cairo, state->args.colors.highlight_clear);
+		} else if (state->auth_state == AUTH_STATE_VALIDATING) {
+			cairo_set_source_u32(cairo, state->args.colors.highlight_ver);
+		} else if (state->auth_state == AUTH_STATE_INVALID) {
+			cairo_set_source_u32(cairo, state->args.colors.highlight_wrong);
+		} else {
+			cairo_set_source_u32(cairo, state->args.colors.ring);
+		}
+
 		cairo_set_line_width(cairo, 2.0 * surface->scale);
 		cairo_arc(cairo, buffer_width / 2, buffer_diameter / 2,
 				arc_radius - arc_thickness / 2, 0, 2 * M_PI);
