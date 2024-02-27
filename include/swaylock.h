@@ -69,6 +69,9 @@ struct swaylock_args {
 	bool daemonize;
 	int ready_fd;
 	bool indicator_idle_visible;
+	bool clock;
+	char *timestr;
+	char *datestr;
 };
 
 struct swaylock_password {
